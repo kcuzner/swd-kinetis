@@ -116,7 +116,7 @@ typedef enum IRQn {
 #define __Vendor_SysTickConfig         0         /**< Vendor specific implementation of SysTickConfig is defined */
 
 #include "core_cm0plus.h"              /* Core Peripheral Access Layer */
-#include "system_MKE04Z4.h"            /* Device specific configuration file */
+//#include "system_MKE04Z4.h"            /* Device specific configuration file */
 
 /*!
  * @}
