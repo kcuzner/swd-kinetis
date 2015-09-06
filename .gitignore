@@ -1,0 +1,9 @@
+# python
+__pycache__
+
+# git
+*.orig
+
+# c stuff
+*obj
+*bin
