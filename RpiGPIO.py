@@ -44,14 +44,14 @@ class RpiSWD:
         self.resyncSWD()
 
     def resetBP (self):
-            print "DEBUG : resetBP"
+            print("DEBUG : resetBP")
 
     def tristatePins (self):
-            print "DEBUG : tristatePins"
+            print("DEBUG : tristatePins")
 
     # this is the fastest port-clearing scheme I could devise
     def clear (self, more = 0):
-            print "DEBUG : clear"
+            print("DEBUG : clear")
 
     def short_sleep(self):
         #time.sleep(0.0001)
@@ -60,7 +60,7 @@ class RpiSWD:
     def readBits (self, count):
         GPIO.setup(self.SWDIO, GPIO.IN)
         ret = []
-        for x in xrange(0, count):
+        for x in range(0, count):
            GPIO.output(self.SWDCK,GPIO.HIGH)
            self.short_sleep()
            GPIO.output(self.SWDCK,GPIO.LOW)
@@ -73,7 +73,7 @@ class RpiSWD:
         GPIO.setup(self.SWDIO, GPIO.OUT)
         GPIO.output(self.SWDIO, GPIO.LOW)
         if self.debug:
-           print "DEBUG - readBits(%d)" % count + "values - %s" %ret
+           print("DEBUG - readBits(%d)" % count + "values - %s" %ret)
         return ret
 
     def sendBits ( self, bits ):
@@ -81,11 +81,11 @@ class RpiSWD:
                     if b == 0 :
                        GPIO.output(self.SWDIO, GPIO.LOW)
                        if self.debugFull:
-                          print "DEBUG - writeBits 0"
+                          print("DEBUG - writeBits 0")
                     else: 
                        GPIO.output(self.SWDIO, GPIO.HIGH)
                        if self.debugFull:
-                          print "DEBUG - writeBits 1"
+                          print("DEBUG - writeBits 1")
                     GPIO.output(self.SWDCK,GPIO.HIGH)
                     self.short_sleep()
                     GPIO.output(self.SWDCK,GPIO.LOW)
@@ -93,24 +93,24 @@ class RpiSWD:
 
     def skipBits (self, count):
         if self.debug:
-           print "DEBUG - skipBits(%d)" % count
+           print("DEBUG - skipBits(%d)" % count)
         self.readBits (count)
 
     def readBytes (self, count):
         ret = []
-        for x in xrange(0, count):
+        for x in range(0, count):
                 v = self.readBits(8)
                 k = 0
                 for i in v:
                         k = 2*k + i
                 ret.append(k);
         if self.debug:
-           print "DEBUG - readBytes : %s " % ret
+           print("DEBUG - readBytes : %s " % ret)
         return ret
 
     def sendBytes (self, data):
         if self.debug:
-           print "DEBUG - sendBytes %s" % data    
+           print("DEBUG - sendBytes %s" % data)    
         for v in data:
                 db = [int(( v >> y) & 1) for y in range(7,-1, -1)]
                 self.sendBits(db)
@@ -122,7 +122,7 @@ class RpiSWD:
 
     def readSWD (self, ap, register):
         if self.debug:
-           print "DEBUG - readSWD %s " % [calcOpcode(ap, register, True)]
+           print("DEBUG - readSWD %s " % [calcOpcode(ap, register, True)])
         # transmit the opcode
         self.sendBytes([calcOpcode(ap, register, True)])
         # check the response
@@ -150,7 +150,7 @@ class RpiSWD:
 
     def writeSWD (self, ap, register, data, ignoreACK = False):
         if self.debug:
-           print "DEBUG - writeSWD %s " % [calcOpcode(ap, register, False)]
+           print("DEBUG - writeSWD %s " % [calcOpcode(ap, register, False)])
         # transmit the opcode
         self.sendBytes([calcOpcode(ap, register, False)])
         # check the response if required
