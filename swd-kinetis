@@ -1,0 +1,21 @@
+#!/usr/bin/python3
+
+import sys
+from SWDCommon import *
+
+def find_adapter(name):
+    mod = __import__(name)
+    return mod.Adapter()
+
+USAGE = "Usage: {0} <adapter name>"
+
+def main():
+    if len(sys.argv) != 2:
+        print(USAGE.format(sys.argv[0]))
+        return
+    adapter = find_adapter(sys.argv[1])
+    debugPort = DebugPort(adapter)
+    print(hex(debugPort.idcode()))
+
+if __name__ == "__main__":
+    main()

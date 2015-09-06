@@ -24,9 +24,11 @@ import RPi.GPIO as GPIO
 #    busPirate = PirateSWD("/dev/ttyUSB0")
 #    busPirate = RpiSWD("")
 #
-class RpiSWD:
 
-    def __init__ (self,notused, vreg):
+# TODO: Make this implement SWDAdapterBase
+class Adapter:
+
+    def __init__ (self):
         GPIO.setmode(GPIO.BCM)
         self.SWDIO = 23
         self.SWDCK = 18
@@ -65,7 +67,7 @@ class RpiSWD:
            self.short_sleep()
            GPIO.output(self.SWDCK,GPIO.LOW)
            if GPIO.input(self.SWDIO):
-              ret.append(1) 
+              ret.append(1)
            else:
               ret.append(0)
            self.short_sleep()
@@ -82,7 +84,7 @@ class RpiSWD:
                        GPIO.output(self.SWDIO, GPIO.LOW)
                        if self.debugFull:
                           print("DEBUG - writeBits 0")
-                    else: 
+                    else:
                        GPIO.output(self.SWDIO, GPIO.HIGH)
                        if self.debugFull:
                           print("DEBUG - writeBits 1")
@@ -110,7 +112,7 @@ class RpiSWD:
 
     def sendBytes (self, data):
         if self.debug:
-           print("DEBUG - sendBytes %s" % data)    
+           print("DEBUG - sendBytes %s" % data)
         for v in data:
                 db = [int(( v >> y) & 1) for y in range(7,-1, -1)]
                 self.sendBits(db)

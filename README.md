@@ -1,7 +1,8 @@
 # Kinetis SWD Programmer
 ### Kevin Cuzner
 
-Partial fork of https://github.com/willdonnelly/pirate-swd
+Partial fork of https://github.com/willdonnelly/pirate-swd and
+https://github.com/disk91/PySWD
 
 ## Purpose
 
