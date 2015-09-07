@@ -29,7 +29,11 @@ class DebugPort:
     def idcode (self):
         return self.swd.readSWD(False, 0)
 
-    def abort (self, orunerr, wdataerr, stickyerr, stickycmp, dap):
+    def abort (self, orunerr, wdataerr, stickyerr, stickycmp, dap, debug=False):
+        if debug:
+            print(("Aborting: ORUNERR: {0} WDATAERR: {1} STICKYERR: {2} " + \
+                "STICKYCMP: {3} DAP: {4}").format(bool(orunerr), bool(wdataerr),\
+                bool(stickyerr), bool(stickycmp), bool(dap)))
         value = 0x00000000
         value = value | (0x10 if orunerr else 0x00)
         value = value | (0x08 if wdataerr else 0x00)
@@ -88,8 +92,16 @@ class MEM_AP:
         csw = self.dp.readRB() & 0xFFFFFF00
         self.dp.writeAP(self.apsel, 0x00, csw + (addrInc << 4) + size)
 
+    def status (self):
+        self.dp.readAP(self.apsel, 0x00)
+        return self.dp.readRB()
+
     def idcode (self):
         self.dp.readAP(self.apsel, 0xFC)
+        return self.dp.readRB()
+
+    def tar(self):
+        self.dp.readAP(self.apsel, 0x04)
         return self.dp.readRB()
 
     def readWord (self, adr):
