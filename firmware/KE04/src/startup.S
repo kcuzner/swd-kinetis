@@ -107,6 +107,23 @@ _startup:
     ldr r6,=0
     ldr r7,=0
 
+    /* If the VTOR isn't configured, configure it and reset */
+    ldr r0,=0xE000ED08
+    ldr r1,[r0]
+    cmp r1,#0
+    bne _set_wdt
+    ldr r1,=__interrupt_vector_table /* set VTOR */
+    str r1,[r0]
+    ldr r0,=0xE000ED0C
+    ldr r1,=0x4
+    str r1,[r0] /* request reset */
+    ldr r0,=0x20000200
+    ldr r1,[r0]
+    adds r1,r1,#1
+    str r1,[r0]
+    b   .
+
+_set_wdt:
     ldr r0,=0x40048000
     ldr r6,[r0]
 
