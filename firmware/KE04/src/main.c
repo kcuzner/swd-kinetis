@@ -21,5 +21,14 @@ int main()
     //set up the clock to our known 42MHz frequency
     ics_setup();
 
+    //we're going to toggle ptb0 to show that this program runs
+
+    //enable GPIO
+    GPIOA->PIDR |= 1 << 8;
+    GPIOA->PDDR |= 1 << 8;
+    GPIOA->PSOR |= 1 << 8;
+
+    while (1) { }
+
     return 0;
 }

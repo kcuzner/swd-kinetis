@@ -107,10 +107,21 @@ _startup:
     ldr r6,=0
     ldr r7,=0
 
+    ldr r0,=0x40048000
+    ldr r6,[r0]
+
+    ldr r7,=13
+
     /* Disable watchdog timer */
     ldr r0,=0x40052000
+    ldr r7,=14
     ldr r1,=0
+    ldr r7,=15
     str r1,[r0]
+    ldr r7,=16
+
+    ldr r0,=0xaa55aa55
+    b   .
 
     /* Zero bss */
     ldr r0,=_start_bss

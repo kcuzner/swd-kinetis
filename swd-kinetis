@@ -1,8 +1,9 @@
 #!/usr/bin/python3
 
-import sys, re
+import sys, re, time
 from SWDCommon import *
 from SWDErrors import *
+from Kinetis import *
 
 class IntelHexException(Exception):
     def __init__(self, message):
@@ -79,42 +80,6 @@ def find_adapter(name):
     mod = __import__(name)
     return mod.Adapter()
 
-class Kinetis(object):
-    def __init__(self, debugPort):
-        self.ahb = MEM_AP(debugPort, 0) # MDM-AP is located at access port 1
-
-    def memap_idcode(self):
-        return self.ahb.idcode()
-
-    def memap_status(self):
-        return self.ahb.status()
-
-    # Cortex M3 stuff
-
-    def halt (self):
-        # halt the processor core
-        self.ahb.writeWord(0xE000EDF0, 0xA05F0003)
-
-    def unhalt (self):
-        # unhalt the processor core
-        self.ahb.writeWord(0xE000EDF0, 0xA05F0000)
-
-    def sys_reset (self):
-        # restart the processor and peripherals
-        self.ahb.writeWord(0xE000ED0C, 0x05FA0004)
-
-    # writes data to an address
-    def write_to_ram(self, addr, data):
-        """
-        Writes a stream of 8-bit values to RAM
-        """
-        if any([d > 0xFF for d in data]):
-            raise InvalidDataException("Data contains values greater than 0xFF")
-        # convert to 32-bit values for speed
-        a_data = [(data[i] << 24) + (data[i+1] << 16) + (data[i+2] << 8) + \
-            data[i+3] for i in range(0, len(data), 4)]
-        self.ahb.writeBlock(addr, a_data)
-
 USAGE = "Usage: {0} <adapter name> <device name>"
 
 def main():
@@ -122,22 +87,26 @@ def main():
         print(USAGE.format(sys.argv[0]))
         return
     adapter = find_adapter(sys.argv[1])
-    debugPort = DebugPort(adapter)
-    dev = Kinetis(debugPort)
-    print("IDCODE: 0x{0:x}".format(debugPort.idcode()))
-    print("MEM-AP: 0x{0:x}".format(dev.memap_idcode()))
-    print("AHB Status: 0x{0:x}".format(dev.memap_status()))
-    for (addr, data) in parse_intel_hex('firmware/' + sys.argv[2] + '/bin/firmware.hex'):
-        print("Writing {0} bytes to {1:x}".format(len(data), addr))
-        try:
+    try:
+        debugPort = DebugPort(adapter)
+        debugPort.init()
+        dev = Kinetis(debugPort)
+        print(dev.status())
+        dev.halt()
+        print(dev.status())
+        print("IDCODE: 0x{0:x}".format(debugPort.idcode()))
+        print(dev)
+        print(dev.registers())
+        for (addr, data) in parse_intel_hex('firmware/' + sys.argv[2] + '/bin/firmware.hex'):
+            print("Writing {0} bytes to {1:x}".format(len(data), addr))
             dev.write_to_ram(addr, data)
-        except SWDFaultError as e:
-            status = debugPort.status()
-            print("Error! DP Status: {0:x}".format(debugPort.status()))
-            debugPort.abort(status & 0x1, status & 0x80, status & 0x20, status & 0x10, 0, debug=True)
-            print("TAR: {0:x}".format(dev.ahb.tar()))
-            raise
-
+        print(dev.status())
+        dev.registers(reg=15, value=0x1fffffc1)
+        dev.run()
+    except SWDFaultError as e:
+        status = debugPort.status()
+        print("Error! DP Status: {0:x}".format(debugPort.status()))
+        debugPort.abort(status & 0x1, status & 0x80, status & 0x20, status & 0x10, 0, debug=True)
 
 if __name__ == "__main__":
     main()

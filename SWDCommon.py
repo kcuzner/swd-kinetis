@@ -6,10 +6,12 @@ class DebugPort:
         0x1BA01477, # EFM32
         0x2BA01477, # STM32
         0x0BB11477, # NUC1xx
-        0xbc11477, # KE04
+        0x0BC11477, # KE04
         )
     def __init__ (self, swd):
         self.swd = swd
+
+    def init(self):
         # read the IDCODE
         # Hugo: according to ARM DDI 0316D we should have 0x2B.. not 0x1B.., but
         # 0x1B.. is what upstream used, so leave it in here...
