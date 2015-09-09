@@ -78,6 +78,12 @@ class Kinetis(object):
         lst.append(("DFSR", self.ahb.readWord(Kinetis.DFSR)))
         return [(l[0], hex(l[1])) if output_hex else l for l in lst]
 
+    def set_debug(self):
+        """
+        Activates debug mode without halting the processor
+        """
+        self.ahb.writeWord(Kinetis.DHCSR, 0xA05F0001)
+
     def halt(self, reset=False):
         """
         Places the device in halt
@@ -88,11 +94,15 @@ class Kinetis(object):
 
     def reset(self):
         """
-        Resets the device and holds the core
+        Resets the device, activating halt once the reset completes
 
         MDM-AP
         """
-        self.ahb.writeWord(0xE000ED0C, 0x05FA0004)
+        self.ahb.writeWord(Kinetis.DEMCR, 0x1) #enable core catch
+        self.ahb.readWord(Kinetis.DHCSR) # clear reset flag
+        self.ahb.writeWord(Kinetis.AIRCR, 0x05FA0004) # request reset
+        while not (self.ahb.readWord(Kinetis.DHCSR & 0x02000000)): # wait
+            time.sleep(0.1)
         return
         self.mdm.control(reset_request=True)
         while self.mdm.status() & 0x80:
@@ -105,6 +115,7 @@ class Kinetis(object):
 
         ARMv6 and MDM-AP
         """
+        self.ahb.writeWord(Kinetis.DEMCR, 0x0)
         self.ahb.writeWord(Kinetis.DHCSR, 0xA05F0000)
         r = self.ahb.readWord(Kinetis.DFSR)
         self.ahb.writeWord(Kinetis.DFSR, r)
@@ -129,7 +140,6 @@ class Kinetis(object):
             self.ahb.writeWord(Kinetis.VTOR, addr)
         else:
             v = self.ahb.readWord(Kinetis.VTOR)
-            print(hex(self.ahb.readWord(v+4)))
             return v
 
     # writes data to an address

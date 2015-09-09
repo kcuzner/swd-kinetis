@@ -7,6 +7,8 @@
 
 #include "MKE04Z4.h"
 
+#define DEBUGREG ((volatile uint32_t*)0x20000200)
+
 /**
  * Sets up the ICS module to FEI at approximately 42MHz
  */
@@ -28,7 +30,14 @@ int main()
     GPIOA->PDDR |= 1 << 8;
     GPIOA->PSOR |= 1 << 8;
 
-    while (1) { }
+    while (1)
+    {
+        //on every cycle we pet the dog
+        //NOTE: We cannot use an interrupt to reset the watchdog.
+        //It causes a hard fault or something that cuases the CPU to reset :(
+        WDOG->CNT = 0x02A6;
+        WDOG->CNT = 0x80B4;
+    }
 
     return 0;
 }
