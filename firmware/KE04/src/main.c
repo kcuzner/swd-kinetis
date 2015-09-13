@@ -23,21 +23,46 @@ int main()
     //set up the clock to our known 42MHz frequency
     ics_setup();
 
+    SIM->SCGC |= SIM_SCGC_PIT_MASK;
+    PIT->MCR = 0;
+    PIT->CHANNEL[0].LDVAL = 1200000U;
+    PIT->CHANNEL[0].TCTRL = PIT_TCTRL_TIE_MASK;
+    PIT->CHANNEL[0].TFLG = 0x1;
+    PIT->CHANNEL[0].TCTRL |= PIT_TCTRL_TEN_MASK;
+    NVIC->ISER[0] = 1 << 22;
+    __enable_irq();
+    //asm("cpsie i");
+
     //we're going to toggle ptb0 to show that this program runs
+    PIT_CH0_IRQHandler();
 
     //enable GPIO
     GPIOA->PIDR |= 1 << 8;
     GPIOA->PDDR |= 1 << 8;
     GPIOA->PSOR |= 1 << 8;
 
+    *DEBUGREG = 0xaa5500;
+
     while (1)
     {
         //on every cycle we pet the dog
         //NOTE: We cannot use an interrupt to reset the watchdog.
         //It causes a hard fault or something that cuases the CPU to reset :(
+        __disable_irq();
         WDOG->CNT = 0x02A6;
         WDOG->CNT = 0x80B4;
+        __enable_irq();
     }
 
     return 0;
+}
+
+void PIT_CH0_IRQHandler(void)
+{
+    PIT->CHANNEL[0].TFLG = 0x1;
+}
+
+void PIT_CH1_IRQHandler(void)
+{
+    PIT->CHANNEL[1].TFLG = 0x1;
 }

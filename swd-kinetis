@@ -88,21 +88,6 @@ def main():
         return
     adapter = find_adapter(sys.argv[1])
     try:
-        # Problem: The VTOR is always reset to 0x00 on reset, but we need to
-        # run a program at reset in order to turn off the WDT...assuming that's
-        # what's happening.
-        #
-        # We may be able to activate VC_CORERESET in DEMCR and have it halt
-        # right after a reset. Then we could set r15 to point to the start of
-        # our code. The problem with this before was that the core would never
-        # unhalt. However, we had never cleared DFSR before, so perhaps that
-        # could fix the problem by clearing the flag. We may also need to clear
-        # just the C_HALT flag in DHCSR, leaving C_DEBUGEN active since it says
-        # that the vectors are ignored when debug mode is off.
-        #
-        # Also, we've been doing all this craziness just to reset the WDT.
-        # Perhaps the WDT won't go off? We need to write a program to catch that
-        # moment.
         debugPort = DebugPort(adapter)
         debugPort.init()
         dev = Kinetis(debugPort)

@@ -103,11 +103,6 @@ class Kinetis(object):
         self.ahb.writeWord(Kinetis.AIRCR, 0x05FA0004) # request reset
         while not (self.ahb.readWord(Kinetis.DHCSR & 0x02000000)): # wait
             time.sleep(0.1)
-        return
-        self.mdm.control(reset_request=True)
-        while self.mdm.status() & 0x80:
-            time.sleep(0.1)
-        self.mdm.control(debug_request=True)
 
     def run(self):
         """
