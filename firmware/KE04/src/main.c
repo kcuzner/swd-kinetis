@@ -31,10 +31,6 @@ int main()
     PIT->CHANNEL[0].TCTRL |= PIT_TCTRL_TEN_MASK;
     NVIC->ISER[0] = 1 << 22;
     __enable_irq();
-    //asm("cpsie i");
-
-    //we're going to toggle ptb0 to show that this program runs
-    PIT_CH0_IRQHandler();
 
     //enable GPIO
     GPIOA->PIDR |= 1 << 8;
@@ -60,9 +56,5 @@ int main()
 void PIT_CH0_IRQHandler(void)
 {
     PIT->CHANNEL[0].TFLG = 0x1;
-}
-
-void PIT_CH1_IRQHandler(void)
-{
-    PIT->CHANNEL[1].TFLG = 0x1;
+    GPIOA->PTOR = 1 << 8;
 }
