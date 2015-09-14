@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-import sys, re, time
+import sys, re, time, json
 from SWDCommon import *
 from SWDErrors import *
 from Kinetis import *
@@ -87,6 +87,8 @@ def main():
         print(USAGE.format(sys.argv[0]))
         return
     adapter = find_adapter(sys.argv[1])
+    with open('firmware/' + sys.argv[2] + '/map.json') as f:
+        settings = json.load(f)
     try:
         debugPort = DebugPort(adapter)
         debugPort.init()
@@ -105,8 +107,14 @@ def main():
             print("Writing {0} bytes to {1:x}".format(len(data), addr))
             dev.write_to_ram(addr, data)
         print(dev.status())
-        dev.registers(reg=15, value=0x1fffffc1)
-        dev.registers(reg=0xd, value=0x20000300)
+        table_offset = int(settings["table_offset"], 0)
+        print("Table offset: 0x{0:x}".format(table_offset))
+        stack_top = dev.ahb.readWord(table_offset)
+        reset_vec = dev.ahb.readWord(table_offset + 4)
+        print("\tSP: 0x{0:x}".format(stack_top))
+        print("\tReset vector: 0x{0:x}".format(reset_vec))
+        dev.registers(reg=0xd, value=stack_top)
+        dev.registers(reg=0xf, value=reset_vec)
         dev.run()
         print(dev.status())
     except SWDFaultError as e:
