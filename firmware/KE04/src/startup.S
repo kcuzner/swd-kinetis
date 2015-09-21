@@ -111,20 +111,16 @@ _startup:
     ldr r1, =__interrupt_vector_table
     str r1,[r0]
 
-    /* Zero bss */
-    ldr r0,=_start_bss
-    ldr r1,=_bss_size
-    ldr r2,=0
-_startup_bss_cp:
-    cmp r1,#0
-    beq _startup_end_bss
-    str r2,[r1]
-    b   _startup_bss_cp
-_startup_end_bss:
+    /* Pet the dog */
+    cpsid i
+    ldr r0, =0x40052002
+    ldr r1, =0x02A6
+    strh r1,[r0]
+    ldr r1, =0x80B4
+    strh r1,[r0]
 
-    ldr r0,=0x20000200
-    ldr r1,=0
-    str r1,[r0]
+    /* Because bss and data are included in the hex file there is no need to
+       copy or zero them */
 
     /* Handoff to main */
     ldr r1,=0

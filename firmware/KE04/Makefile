@@ -25,7 +25,7 @@ INCLUDE=-I$(INCDIR)
 
 # C Flags
 GCFLAGS  = -Wall -fno-common -mthumb -ffreestanding -fno-builtin -nodefaultlibs\
- 	-nostdlib -mcpu=$(CPU) -Os -Wa,-ahlms=$(addprefix $(OBJDIR)/,$(notdir $(<:.c=.lst)))
+ 	-nostdlib -mcpu=$(CPU) -Os -Wa,-ahlms=$(addprefix $(OBJDIR)/,$(notdir $(<:.c=.lst))) -g
 GCFLAGS += $(INCLUDE)
 LDFLAGS += -nostartfiles -T$(LSCRIPT) -mthumb -mcpu=$(CPU)
 ASFLAGS += -mcpu=$(CPU)

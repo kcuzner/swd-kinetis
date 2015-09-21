@@ -144,6 +144,11 @@ class Kinetis(object):
         """
         if any([d > 0xFF for d in data]):
             raise InvalidDataException("Data contains values greater than 0xFF")
+        # pad array with zeros to be divisible by 4
+        if len(data) % 4:
+            data[len(data):] = [0] * (4 - (len(data) % 4))
+            print("Now", len(data))
+
         # convert to 32-bit values for speed
         a_data = [(data[i+3] << 24) + (data[i+2] << 16) + (data[i+1] << 8) + \
             data[i] for i in range(0, len(data), 4)]

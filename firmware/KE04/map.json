@@ -1,3 +1,8 @@
 {
-    "table_offset": "0x1fffff00"
+    "table_offset": "0x1fffff00",
+    "status_reg": "0x20000200",
+    "address_reg": "0x20000204",
+    "length_reg": "0x20000208",
+    "buffer_reg": "0x2000020C",
+    "buffer_max_length": "64"
 }
