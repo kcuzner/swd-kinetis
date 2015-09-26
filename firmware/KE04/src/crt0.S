@@ -119,8 +119,8 @@ _startup:
     ldr r1, =0x80B4
     strh r1,[r0]
 
-    /* Because bss and data are included in the hex file there is no need to
-       copy or zero them */
+    /* Because the program is already located in SRAM with no flash involved,
+      there is no need to zero bss or copy data: They can be used directly */
 
     /* Handoff to main */
     ldr r1,=0
