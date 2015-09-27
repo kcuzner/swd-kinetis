@@ -1,5 +1,6 @@
 from SWDCommon import *
 from SWDErrors import *
+import time
 
 class MDM_AP(object):
     """
@@ -44,7 +45,7 @@ class Kinetis(object):
 
     def __init__(self, debugPort):
         self.ahb = MEM_AP(debugPort, 0) # MEM-AP is located at access port 0
-        #self.mdm = MDM_AP(debugPort, 1) # MDM-AP is located at access port 1
+        self.mdm = MDM_AP(debugPort, 1) # MDM-AP is located at access port 1
 
     def __str__(self):
         """
@@ -52,8 +53,40 @@ class Kinetis(object):
         """
         lst = []
         lst.append("AHB-AP: 0x{0:x}".format(self.ahb.idcode()))
-        #lst.append("MDM-AP: 0x{0:x}".format(self.mdm.idcode()))
+        lst.append("MDM-AP: 0x{0:x}".format(self.mdm.idcode()))
         return '\n'.join(lst)
+
+    def wait_flash(self):
+        """
+        Waits until the device flash is ready
+
+        Returns the current device status
+        """
+        while True:
+            status = self.mdm.status()
+            if status & 0x2:
+                return status
+            time.sleep(0.1)
+
+    def is_secured(self):
+        """
+        Determines if the device is secure
+        """
+        return bool(self.wait_flash() & 0x4)
+
+    def unsecure(self):
+        """
+        Performs a mass erase via mdm-ap which should unsecure the device
+
+        Returns whether or not the device is still secured
+        """
+        if self.is_secured():
+            self.mdm.control(flash_erase=True)
+            while True:
+                status = self.wait_flash()
+                if not status & 0x1:
+                    return self.is_secured()
+                time.sleep(0.1)
 
     def registers(self, reg=None, value=None, output_hex=True):
         """
@@ -73,7 +106,7 @@ class Kinetis(object):
         """
         lst = []
         lst.append(("AHB-AP", self.ahb.status()))
-        #lst.append(("MDM-AP", self.mdm.status()))
+        lst.append(("MDM-AP", self.mdm.status()))
         lst.append(("DHCSR", self.ahb.readWord(Kinetis.DHCSR)))
         lst.append(("DFSR", self.ahb.readWord(Kinetis.DFSR)))
         return [(l[0], hex(l[1])) if output_hex else l for l in lst]
@@ -147,7 +180,6 @@ class Kinetis(object):
         # pad array with zeros to be divisible by 4
         if len(data) % 4:
             data[len(data):] = [0] * (4 - (len(data) % 4))
-            print("Now", len(data))
 
         # convert to 32-bit values for speed
         a_data = [(data[i+3] << 24) + (data[i+2] << 16) + (data[i+1] << 8) + \

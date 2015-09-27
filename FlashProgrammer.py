@@ -62,6 +62,10 @@ def parse_intel_hex(name):
                 raise IntelHexException("Invalid data length for extended \
                     segment address")
             esaddr = (l.data[0] << 8) + l.data[1]
+        elif l.type == 0x03: # Start segment address
+            # This represents the CS:IP value for 8086 and has no meaning for
+            # us here right now
+            pass
         elif l.type == 0x04: # extended linear address
             if len(l.data) != 2:
                 raise IntelHexException("Invalid data length for extended \
@@ -102,34 +106,125 @@ class FlashProgrammer(object):
         """
         self.dev = dev
         self.type = type
+        mapfile = read_map('firmware/' + self.type + '/bin/firmware.map')
+        self.__table_offset = mapfile['interrupt_vector_table']
+        self.__flash_api_loc = mapfile['flash_api_state']
 
     def program(self, filename):
         """
         Programs the passed hex file to the device
         """
-        mapfile = read_map('firmware/' + self.type + '/bin/firmware.map')
-        table_offset = mapfile['interrupt_vector_table']
-        flash_api_loc = mapfile['flash_api_state']
+
 
         print("Device: {0}\n\tIVT: {1:x}\n\tAPI: {2:x}".format(
-            self.type, table_offset, flash_api_loc))
+            self.type, self.__table_offset, self.__flash_api_loc))
 
+        if self.dev.is_secured():
+            print("Device reports that it is secure. Attempting to unsecure...")
+            if self.dev.unsecure():
+                print("Device is still secure. Aborting.")
+                return
+
+        print(self.dev)
+        print("{0:x}".format(self.dev.mdm.status()))
         print(self.dev.status())
         self.dev.set_debug()
         print("SIM_SRSID", hex(self.dev.ahb.readWord(0x40048000)))
         self.dev.reset() # this eventually halts the processor
         print(self.dev.status())
         print(self.dev)
-        print(self.dev.registers())
+        print("Loading {0} firmware into memory...".format(self.type))
         for (addr, data) in parse_intel_hex('firmware/' + self.type + '/bin/firmware.hex'):
-            print("Writing {0} bytes to {1:x}".format(len(data), addr))
+            print("\tWriting {0} bytes to {1:x}".format(len(data), addr))
             self.dev.write_to_ram(addr, data)
+        print("Firmware loaded.")
         print(self.dev.status())
-        stack_top = self.dev.ahb.readWord(table_offset)
-        reset_vec = self.dev.ahb.readWord(table_offset + 4)
+        stack_top = self.dev.ahb.readWord(self.__table_offset)
+        reset_vec = self.dev.ahb.readWord(self.__table_offset + 4)
         print("\tSP: 0x{0:x}".format(stack_top))
         print("\tReset vector: 0x{0:x}".format(reset_vec))
         self.dev.registers(reg=0xd, value=stack_top)
         self.dev.registers(reg=0xf, value=reset_vec)
         self.dev.run()
+        self.dev.wait_flash()
         print(self.dev.status())
+
+        try:
+            self.__mass_erase()
+            print("Programming {0}...".format(filename))
+            for (addr, data) in parse_intel_hex(filename):
+                print("\tWriting {0} bytes to {1:x}".format(len(data), addr))
+                self.__program_flash(addr, data)
+        except:
+            print("An error occurred. Erasing and unsecuring flash...")
+            self.__mass_erase()
+            self.__program_flash(0x400, [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0xff])
+            print("Done.")
+            raise
+
+        print("After programming, the flash configuration is:")
+        for i in [0x400, 0x404, 0x408, 0x40C]:
+            print("{0:x}: {1:x}".format(i, self.dev.ahb.readWord(i)))
+
+        self.dev.reset()
+        self.dev.run()
+
+        #print("Programming test flash stuff")
+        #self.dev.ahb.writeWord(self.__flash_api_loc + 4, 0x410)
+        #self.dev.ahb.writeWord(self.__flash_api_loc + 8, 8);
+        #self.dev.ahb.writeWord(self.__flash_api_loc + 12, 0xa5a5a5a5);
+        #self.dev.ahb.writeWord(self.__flash_api_loc + 16, 0x55aa55aa);
+        #self.dev.ahb.writeWord(self.__flash_api_loc, 0x09)
+        #print(self.__wait_ready())
+
+        #print("Reading back programmed stuff")
+        #print("{0:x} {1:x}".format(self.dev.ahb.readWord(0x410), self.dev.ahb.readWord(0x414)))
+
+    def __wait_ready(self):
+        """
+        Waits for the firmware to become ready
+        """
+        while not self.dev.ahb.readWord(self.__flash_api_loc) & 0x8:
+            i = 0
+        return self.dev.ahb.readWord(self.__flash_api_loc)
+
+    def __mass_erase(self):
+        """
+        Performs a mass erase operation via the firmware
+        """
+        print("Waiting for firmware to become ready...")
+        status = self.__wait_ready()
+        if (status & 0xF0):
+            print("There is an error pending: {0:x}".format(status))
+            return
+        print("Issuing erase command")
+        self.dev.ahb.writeWord(self.__flash_api_loc, 0x00)
+        status = self.__wait_ready()
+        if (status & 0xF0):
+            print("There is an error pending: {0:x}".format(status))
+            return
+        print("Mass erase complete")
+
+    def __program_flash(self, addr, data):
+        """
+        Programs a set of data
+        """
+        if any([d > 0xFF for d in data]):
+            raise InvalidDataException("Data contains values greater than 0xFF")
+        # pad array with zeros to be divisible by 4
+        if len(data) % 4:
+            data[len(data):] = [0] * (4 - (len(data) % 4))
+
+        # convert to 32-bit values for speed
+        a_data = [(data[i+3] << 24) + (data[i+2] << 16) + (data[i+1] << 8) + \
+            data[i] for i in range(0, len(data), 4)]
+
+        self.dev.ahb.writeWord(self.__flash_api_loc + 4, addr)
+        self.dev.ahb.writeWord(self.__flash_api_loc + 8, len(a_data))
+        for i in range(0, len(a_data)):
+            self.dev.ahb.writeWord(self.__flash_api_loc + 12 + i * 4, a_data[i])
+        self.dev.ahb.writeWord(self.__flash_api_loc, 0x01)
+        status = self.__wait_ready()
+        if (status & 0xF0):
+            print("There is an error pending: {0:x}".format(status))
+            return
