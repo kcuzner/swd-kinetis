@@ -102,7 +102,9 @@ static void api_tick(void)
     case API_READY:
         if (!(FlashAPIState.status & API_STATUS_READY_MASK))
         {
+#if DEBUG
             GPIOA->PCOR |= 1 << 8;
+#endif
             //we are asked to execute a command
             uint8_t cmd = (FlashAPIState.status & API_STATUS_CMD_MASK) >> API_STATUS_CMD_SHIFT;
             switch (cmd)
@@ -127,7 +129,9 @@ static void api_tick(void)
         }
         else
         {
+#if DEBUG
             GPIOA->PSOR |= 1 << 8;
+#endif
         }
         break;
     case API_PROGRAM_LOAD:
@@ -208,6 +212,11 @@ int main()
     ics_setup();
 
 #if DEBUG
+    //enable GPIO
+    GPIOA->PIDR |= 1 << 8;
+    GPIOA->PDDR |= 1 << 8;
+    GPIOA->PSOR |= 1 << 8;
+
     SIM->SCGC |= SIM_SCGC_PIT_MASK;
     PIT->MCR = 0;
     PIT->CHANNEL[0].LDVAL = 12000000U;
@@ -218,10 +227,7 @@ int main()
 #endif
     __enable_irq();
 
-    //enable GPIO
-    GPIOA->PIDR |= 1 << 8;
-    GPIOA->PDDR |= 1 << 8;
-    GPIOA->PSOR |= 1 << 8;
+
 
     while (1)
     {
