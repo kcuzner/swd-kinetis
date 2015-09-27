@@ -27,7 +27,7 @@ INCLUDE=-I$(INCDIR)
 GCFLAGS  = -Wall -fno-common -mthumb -ffreestanding -fno-builtin -nodefaultlibs\
  	-nostdlib -mcpu=$(CPU) -Os -Wa,-ahlms=$(addprefix $(OBJDIR)/,$(notdir $(<:.c=.lst))) -g
 GCFLAGS += $(INCLUDE)
-LDFLAGS += -nostartfiles -T$(LSCRIPT) -mthumb -mcpu=$(CPU)
+LDFLAGS += -nostartfiles -T$(LSCRIPT) -mthumb -mcpu=$(CPU) -Wl,-Map=$(BINDIR)/$(PROJECT).map
 ASFLAGS += -mcpu=$(CPU)
 
 # Tools

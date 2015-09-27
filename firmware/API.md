@@ -2,9 +2,9 @@
 
 For each device supported, an appropriately named folder must be present (named
 the same as the identifier used in the arguments to swd-kinetis). The firmware
-must be located in a file called `bin/firmware.hex`. A file called
-`./map.json` must also be present which specifies the memory addresses used to
-communicate to the firmware.
+must be located in a file called `./bin/firmware.hex`. A file called
+`./bin/firmware.map` must also be present which is the gcc linker-generated map
+file.
 
 ## Theory of operation
 
@@ -19,20 +19,36 @@ flash. It must perform the following operations:
    relatively common between Kinetis devices that I've read the manuals for)
  * Program 16-byte flash configuration region.
 
-## JSON Map Format
+## Linker and section names
+
+The following 2 code sections are required and should appear in the gcc map
+file:
+
+ * .interrupt_vector_table
+ * .flash_api_state
+
+
+.interrupt_vector_table must have the address of the interrupt vector table as
+required by VTOR. The data at this location will be read to determine the
+initial stack pointer and program counter.
+
+.flash_api_state must have the address to a block of memory conforming to the
+following structure and declaration:
 
 ```
-{
-  "table_offset": "0x<hex location of the ISR table in the program>"
-  "status_reg": "0x<hex location of the 32-bit status word>",
-  "address_reg": "0x<hex location to write start address of next chunk>"
-  "length_reg": "0x<hex location to write length of next chunk>"
-  "buffer_reg": "0x<hex location of the start of the program buffer>",
-  "buffer_max_length": "<decimal length of the program buffer>"
-}
+    typedef struct
+    {
+        volatile uint32_t status;
+        volatile uint32_t address;
+        volatile uint32_t length;
+        volatile uint32_t buffer[64];
+        } APIState;
+
+    __attribute__((section (".flash_api_state"), used))
+    APIState FlashAPIState;
 ```
 
-## Memory format
+## APIState Format
 
 ### status
 
@@ -47,8 +63,9 @@ Communicates programmer status and initiates commands
    write to 0 in order to initiate a program command.
  * Bit 4-7: Status code valid when bit 3 is set to 1
    * 0b0000 - OK, command complete
-   * 0b0001 - Flash is secure, unable to execute any command
+   * 0b0002 - A flash error occurred
    * 0b1111 - Command not implemented
+ * Bit 8-15: Error flags (can vary by implementation)
  * All other bits to bit 31: Reserved, write to 0
 
 ### address
@@ -58,8 +75,8 @@ Address to write location of next chunk. Must be aligned to a 4-byte boundary.
 ### buffer
 
 Memory from this location until buffer+buffer_max_length can be written as a
-data buffer for the flash
+data buffer for the flash. The buffer is expressed as a 4-byte words.
 
 ### length
 
-32-bit value containing the length of the current flash buffer.
+32-bit value containing the length of the current flash buffer in 4-byte words

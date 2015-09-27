@@ -45,10 +45,13 @@ SECTIONS
         *(.data.*)
         *(.shdata)
         . = ALIGN(4);
+        *(.flash_api_state)
+        . = ALIGN(4);
         _start_bss = .;
         *(.bss)
         *(.bss.*)
         _end_bss = .;
+
     } > sram
 
     _bss_size = _end_bss - _start_bss;
