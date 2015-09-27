@@ -31,6 +31,7 @@ SECTIONS
     {
         __interrupt_vector_table = .;
         *(.interrupt_vector_table)
+        *(.unsecured_config)
         . = ALIGN(4);
         *(.startup)
         /* Rest of the code */

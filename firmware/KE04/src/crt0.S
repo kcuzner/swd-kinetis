@@ -63,6 +63,12 @@
     .long   0
     .long   0
 
+    .section ".unsecured_config"
+    .long   0xffffffff
+    .long   0xffffffff
+    .long   0xffffffff
+    .long   0xfffeffff
+
 /* Weak declarations */
     .thumb
 

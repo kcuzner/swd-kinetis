@@ -79,6 +79,27 @@ def parse_intel_hex(name):
         else:
             raise IntelHexException("Unimplmented type {0}".format(l.type))
 
+def aggregate_addr_data(addrdata, max_length=256):
+    """
+    Aggregates contiguous data into blocks with a maximum length
+    """
+    current_addr = None
+    next_addr = None
+    current_data = []
+    for (addr, data) in addrdata:
+        if next_addr != addr or len(current_data) >= max_length:
+            if current_addr is not None:
+                yield (current_addr, current_data)
+            current_addr = addr
+            current_data = data
+            next_addr = current_addr + len(data)
+        else:
+            current_data.extend(data)
+            next_addr += len(data)
+    if current_addr is not None:
+        yield (current_addr, current_data)
+
+
 def read_map_raw(name):
     """
     Reads a GCC map file to get addresses of sections
@@ -97,6 +118,13 @@ def read_map(name):
     """
     return dict(read_map_raw(name))
 
+def extract_bytes(words):
+    for w in words:
+        yield w & 0xFF
+        yield (w >> 8) & 0xFF
+        yield (w >> 16) & 0xFF
+        yield (w >> 24) & 0xFF
+
 class FlashProgrammer(object):
     def __init__(self, dev, type):
         """
@@ -109,6 +137,7 @@ class FlashProgrammer(object):
         mapfile = read_map('firmware/' + self.type + '/bin/firmware.map')
         self.__table_offset = mapfile['interrupt_vector_table']
         self.__flash_api_loc = mapfile['flash_api_state']
+        self.__unsecured_config_loc = mapfile['unsecured_config']
 
     def program(self, filename):
         """
@@ -134,7 +163,7 @@ class FlashProgrammer(object):
         print(self.dev.status())
         print(self.dev)
         print("Loading {0} firmware into memory...".format(self.type))
-        for (addr, data) in parse_intel_hex('firmware/' + self.type + '/bin/firmware.hex'):
+        for (addr, data) in aggregate_addr_data(parse_intel_hex('firmware/' + self.type + '/bin/firmware.hex')):
             print("\tWriting {0} bytes to {1:x}".format(len(data), addr))
             self.dev.write_to_ram(addr, data)
         print("Firmware loaded.")
@@ -152,13 +181,13 @@ class FlashProgrammer(object):
         try:
             self.__mass_erase()
             print("Programming {0}...".format(filename))
-            for (addr, data) in parse_intel_hex(filename):
+            for (addr, data) in aggregate_addr_data(parse_intel_hex(filename)):
                 print("\tWriting {0} bytes to {1:x}".format(len(data), addr))
                 self.__program_flash(addr, data)
         except:
             print("An error occurred. Erasing and unsecuring flash...")
             self.__mass_erase()
-            self.__program_flash(0x400, [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe, 0xff])
+            self.__program_flash(0x400, list(extract_bytes(self.dev.ahb.readBlock(self.__unsecured_config_loc, 4))))
             print("Done.")
             raise
 
@@ -168,17 +197,6 @@ class FlashProgrammer(object):
 
         self.dev.reset()
         self.dev.run()
-
-        #print("Programming test flash stuff")
-        #self.dev.ahb.writeWord(self.__flash_api_loc + 4, 0x410)
-        #self.dev.ahb.writeWord(self.__flash_api_loc + 8, 8);
-        #self.dev.ahb.writeWord(self.__flash_api_loc + 12, 0xa5a5a5a5);
-        #self.dev.ahb.writeWord(self.__flash_api_loc + 16, 0x55aa55aa);
-        #self.dev.ahb.writeWord(self.__flash_api_loc, 0x09)
-        #print(self.__wait_ready())
-
-        #print("Reading back programmed stuff")
-        #print("{0:x} {1:x}".format(self.dev.ahb.readWord(0x410), self.dev.ahb.readWord(0x414)))
 
     def __wait_ready(self):
         """

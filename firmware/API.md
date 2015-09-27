@@ -21,16 +21,23 @@ flash. It must perform the following operations:
 
 ## Linker and section names
 
-The following 2 code sections are required and should appear in the gcc map
+The following code sections are required and should appear in the gcc map
 file:
 
  * .interrupt_vector_table
+ * .unsecured_config
  * .flash_api_state
 
+All of these should be found in the hex file as well as data must be read from
+them and we don't yet support elf formats.
 
 .interrupt_vector_table must have the address of the interrupt vector table as
 required by VTOR. The data at this location will be read to determine the
 initial stack pointer and program counter.
+
+.unsecured_config must contain 16 bytes which will be written to the flash
+configuration section in the event of an error to ensure the device remains
+unsecure.
 
 .flash_api_state must have the address to a block of memory conforming to the
 following structure and declaration:
